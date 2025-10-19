@@ -9,3 +9,137 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
 ```
 
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%",
+  fig.retina = 2,
+  dpi = 320
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+
+# Import and Tidy Data
+
+```{r}
+exostosis_df = 
+  read_excel("data/p8105_mtp_data.xlsx", skip = 8, na = c("NA", ".", "")) |> 
+  janitor::clean_names() 
+  
+exostosis_clean = 
+  exostosis_df |> 
+  mutate(
+    sex= case_match(
+      sex, 
+      0 ~ "female",
+      1 ~ "male"
+    ),
+    age_group = case_match(
+      age_group,
+      "2" ~ "18_30",
+      "3" ~ "31_40",
+      "4" ~ "41_50",
+      "5" ~ "51_60",
+      c("6", "7", "8") ~ "60+"
+    ) |> 
+      factor(levels = c("18_30", "31_40", "41_50", "51_60", "60+"),
+           ordered = TRUE),
+    eop_size_mm = if_else(is.na(eop_size_mm), 0, eop_size_mm),
+    eop_size = case_match(
+    eop_size,
+    "0" ~ "0_5",
+    "1" ~ "5_10",
+    "2" ~ "10_15",
+    "3" ~ "15_20",
+    "4" ~ "20_25",
+    "5" ~ "25+"
+    ) |> 
+      factor(levels = c("0_5", "5_10", "10_15", "15_20", "20_25","25+"),
+           ordered = TRUE),
+    eop_visibility_classification = case_match(
+      eop_visibility_classification,
+      0 ~ "eop size 0",
+      1 ~ "0 < eop size  <=5",
+      2 ~ "eop size >= 5"
+    ) |> 
+      factor(levels = c("eop size 0", "0 < eop size  <=5", "eop size >= 5"),
+           ordered = TRUE),
+    fhp_category = case_match(
+      fhp_category,
+      "0" ~ "0_10",
+      "1" ~ "10_20",
+      "2" ~ "20_30",
+      "3" ~ "30_40",
+      "4" ~ "40_50",
+      "5" ~ "50_60",
+      "6" ~ "60_70",
+      "7" ~ "70+"
+    ) |> 
+      factor(levels = c("0_10", "10_20", "20_30", "30_40", "40_50",
+                        "50_60","60_70","70+"),
+           ordered = TRUE)
+  )
+```
+
+The dataset was imported from an Excel file and cleaned by skipping unused header rows, standardizing variable names, and converting missing values into proper NAs. Each numeric code from the original report was translated into meaningful labels for clarity. For example, sex was recoded as male and female, and age groups were organized into ordered categories such as 18–30, 31–40, 41–50, 51–60, and 60+.
+
+Missing EOP size measurements were replaced with zeros, and both EOP and FHP size classifications were converted into readable, ordered factor levels (e.g., 0–5 mm, 5–10 mm, 10–15 mm, etc.). The variable eop_visibility_classification was also recoded to reflect visibility categories (EOP size 0 mm, 0 < EOP ≤ 5 mm, EOP ≥ 5 mm).
+
+```{r}
+exostosis_clean |> 
+  summarise(n())
+
+exostosis_clean |> 
+  group_by(sex) |> 
+  summarise(participants = n()) |> 
+  knitr::kable()
+
+exostosis_clean |> 
+  group_by(age_group) |> 
+  summarise(participants = n()) |> 
+  knitr::kable()
+```
+
+After cleaning, the resulting dataset contained `r nrow(exostosis_clean)` observations and `r ncol(exostosis_clean)` variables. Among the variables, several are key to the analysis. `EOP size` and `EOP visibility classification` are crucial because they describe the prominence and visibility of the external enlarged protuberance — the main anatomical feature studied. `FHP size` and `FHP category` are also important, as they measure forward head posture, which may be linked to EOP development. Finally, `sex` and `age group` provide demographic context to explore biological or behavioral differences across participants.
+
+```{r}
+exostosis_clean |> 
+  group_by(eop_shape) |> 
+  summarise(participants = n()) |> 
+  knitr::kable()
+
+exostosis_clean |> 
+  filter(is.na(fhp_size_mm))
+
+exostosis_df |>
+  mutate(fhp_category = as.numeric(fhp_category)) |>
+  filter(fhp_category > 7) |> 
+  select(fhp_category)
+```
+
+The dataset shows several issues where categorical variables do not fully match their underlying continuous measures. For instance, `eop_shape` includes categories 1, 2, 3, and 5, but category 4 is missing, while over 500 observations are recorded as NA, suggesting incomplete or inconsistent coding. In `fhp_category`, one record has a value of 30.8, which by definition should fall within the 30–40 range but was not properly categorized. Additionally, six missing values were identified in `fhp_size_mm`, meaning that a few participants lack corresponding FHP measurements. 
+
+# Visualization
+
+
+
+# Reproducing reported results and discussion
+
+
+
