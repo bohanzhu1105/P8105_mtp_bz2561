@@ -120,6 +120,21 @@ After cleaning, the resulting dataset contained `r nrow(exostosis_clean)` observ
 
 ```{r}
 exostosis_clean |> 
+  filter(is.na(age_group))
+
+exostosis_df |>
+  filter(
+    (eop_size_mm >= 0 & eop_size_mm < 5 & eop_size != 0) |
+    (eop_size_mm >= 5 & eop_size_mm < 10 & eop_size != 1) |
+    (eop_size_mm >= 10 & eop_size_mm < 15 & eop_size != 2) |
+    (eop_size_mm >= 15 & eop_size_mm < 20 & eop_size != 3) |
+    (eop_size_mm >= 20 & eop_size_mm < 25 & eop_size != 4) |
+    (eop_size_mm >= 25 & eop_size != 5)
+  ) |>
+  select(eop_size_mm, eop_size)|> 
+  knitr::kable()
+
+exostosis_clean |> 
   group_by(eop_shape) |> 
   summarise(participants = n()) |> 
   knitr::kable()
@@ -133,11 +148,29 @@ exostosis_df |>
   select(fhp_category)
 ```
 
-The dataset shows several issues where categorical variables do not fully match their underlying continuous measures. For instance, `eop_shape` includes categories 1, 2, 3, and 5, but category 4 is missing, while over 500 observations are recorded as NA, suggesting incomplete or inconsistent coding. In `fhp_category`, one record has a value of 30.8, which by definition should fall within the 30–40 range but was not properly categorized. Additionally, six missing values were identified in `fhp_size_mm`, meaning that a few participants lack corresponding FHP measurements. 
+The dataset shows several issues where categorical variables do not fully match their underlying continuous measures. For instance, `age_group` has two missing entries, one participants aged 0–17, a range that was not included in the defined classification range, while another who aged 45 is miss-classified into group 1.  Besides, `eop_shape` includes categories 1, 2, 3, and 5, but category 4 is missing, while over 500 observations are recorded as NA, suggesting incomplete or inconsistent coding. In `fhp_category`, one record has a value of 30.8, which by definition should fall within the 30–40 range but was not properly categorized. Additionally, six missing values were identified in `fhp_size_mm`, meaning that a few participants lack corresponding FHP measurements. 
 
 # Visualization
 
-
+```{r}
+exostosis_clean |>
+  filter(!is.na(age_group), !is.na(fhp_size_mm)) |>
+  ggplot(aes(x = age_group, y = fhp_size_mm, fill = sex)) +
+  geom_violin(width = 0.7, alpha = 0.7) +
+  stat_summary(aes(group = sex),
+               fun = mean, geom = "point",
+               position = position_dodge(width = 0.8),
+               shape = 21, size = 2.8, fill = "white",
+               na.rm = TRUE) +
+  labs(
+    title = "Distribution of FHP by Age Group and Sex",
+    x = "Age Group (years)",
+    y = "Forward Head Protraction Size (mm)",
+    fill = "Sex",
+    caption = "Distribution of FHP size by age group and sex, based on data from Shahar & Sayers (2018)"
+  ) +
+  theme(legend.position = "right")
+```
 
 # Reproducing reported results and discussion
 
