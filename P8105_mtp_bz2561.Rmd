@@ -260,6 +260,33 @@ This plot shows how FHP size relates to EOP size across age and sex groups.
 The relationship appears weak in both sexes, with scattered data and no clear trend within age categories. Males exhibit greater variability and generally larger EOP sizes, consistent with prior findings. Overall, EOP enlargement seems more influenced by sex than by FHP size.
 
 # Reproducing reported results and discussion
+From the tables appear in first part, small discrepancies exist between the authors’ stated sample sizes and the available data. Overall, there are 21 more participants than reported, and differences appear across all age groups except 51–60.
 
+```{r}
+exostosis_clean |>
+  group_by(sex) |>
+  summarise(
+    mean_FHP = round(mean(fhp_size_mm, na.rm = TRUE), 2),
+    sd_FHP = round(sd(fhp_size_mm, na.rm = TRUE), 2),
+  ) 
+```
+Author's state that mean FHP in the male cases was 28±15 mm, while that for the female cases was 24±11mm. Results based on sample shows that for male cases is $23.65 \pm 10.69$ and female cases is $28.32 \pm 14.80$ which basically the same as author's result.
 
+```{r}
+exostosis_clean |>
+  summarise(
+    EEOP_prevalence = (sum(eop_size_mm > 10, na.rm = TRUE) /
+                       sum(!is.na(eop_size_mm))) * 100
+  )
+```
+EEOP defined as an EOP exceeding 10 mm in size. Results based on sample equals $32.1 \% \approx 33\%$ (According to the author).
 
+```{r}
+exostosis_clean |>
+  drop_na(age_group) |>
+  group_by(age_group) |>
+  summarise(
+    FHP_over_40_percent = (sum(fhp_size_mm > 40) / n()) * 100
+  )
+```
+For participants over 60, $32.5\%$ (close to $34.5\%$) had FHP > 40 mm, the highest rate among all groups. Thus, both the overall trend and specific values are consistent with the authors’ report
