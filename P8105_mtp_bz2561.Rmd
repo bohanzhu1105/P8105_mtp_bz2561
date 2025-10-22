@@ -98,29 +98,24 @@ exostosis_clean =
            ordered = TRUE)
   )
 ```
+After importing from Excel, the dataset was cleaned by skipping unused header rows, standardizing variable names, converting missing values to NAs, and recoding numeric codes into clear labels. `Sex` was relabeled as male/female, and `age groups` as 18–30, 31–40, etc.
 
-The dataset was imported from an Excel file and cleaned by skipping unused header rows, standardizing variable names, and converting missing values into proper NAs. Each numeric code from the original report was translated into meaningful labels for clarity. For example, sex was recoded as male and female, and age groups were organized into ordered categories such as 18–30, 31–40, 41–50, 51–60, and 60+.
-
-Missing EOP size and FHP size measurements were replaced with zeros, and both EOP and FHP size classifications were converted into readable, ordered factor levels (e.g., 0–5 mm, 5–10 mm, 10–15 mm, etc.). The variable eop_visibility_classification was also recoded to reflect visibility categories (EOP size 0 mm, 0 < EOP ≤ 5 mm, EOP ≥ 5 mm).
+Missing `EOP` size and `FHP` size measurements were replaced with zeros, and both `EOP size` and `FHP_category` classifications were converted into readable, ordered factor levels. The variable `eop_visibility_classification` was also recoded to reflect visibility categories.
 
 ```{r}
 exostosis_clean |> 
   summarise(n())
 
-exostosis_clean |> 
-  group_by(sex) |> 
-  summarise(participants = n()) |> 
-  knitr::kable()
-
-exostosis_clean |> 
-  group_by(age_group) |> 
-  summarise(participants = n()) |> 
+exostosis_clean |>
+  group_by(age_group, sex) |>
+  summarise(participants = n(), .groups = "drop") |>
+  pivot_wider(names_from = sex, values_from = participants) |>
   knitr::kable()
 ```
-
+**I assume cleaning rule for FHP size is same as EOP size**
 After cleaning, the resulting dataset contained `r nrow(exostosis_clean)` observations and `r ncol(exostosis_clean)` variables. Among the variables, several are key to the analysis. 
 
-`EOP size` and `EOP visibility classification` are crucial because they describe the prominence and visibility of the external enlarged protuberance — the main anatomical feature studied. `FHP size` and `FHP category` are also important, as they measure forward head posture, which may be linked to EOP development. Finally, `sex` and `age group` provide demographic context to explore biological or behavioral differences across participants.
+`EOP size` and `eop_visibility_classification` are crucial because they capture the prominence of the external protuberance. `FHP size` and `FHP category` are also important, as they measure forward head posture potentially linked to EOP growth. Finally, `sex` and `age group` offer demographic context for biological or behavioral differences.
 
 ```{r}
 exostosis_clean |> 
@@ -166,13 +161,13 @@ exostosis_df |>
   select(fhp_category)
 ```
 
-The dataset shows several issues where categorical variables do not fully match their underlying continuous measures. For instance, `age_group` has two missing entries, one participants aged 0–17, a range that was not included in the defined classification range, while another who aged 45 is miss-classified into group 1.
+Some categorical variables do not align with their continuous values. For example, `age_group` has two missing cases—one aged 0–17 (outside defined groups) and another aged 45 misclassified into group 1.
 
-A few classification errors among `eop_size_mm` and `fhp_size_mm` were corrected, mainly caused by inconsistencies in whether boundaries were treated as inclusive or exclusive.
+Some `eop_size_mm` and `fhp_size_mm` values are misclassified, some may due to inconsistent boundary rules (unmatchable data listed in table above). 
 
-Besides, `eop_shape` includes categories 1, 2, 3, and 5, but category 4 is missing, while over 500 observations are recorded as NA, suggesting incomplete or inconsistent coding. 
+Besides, `eop_shape` includes categories 1, 2, 3, and 5 but lacks 4, with 500+ NAs suggesting incomplete coding.
 
-In `fhp_category`, one record has a value of 30.8, which by definition should fall within the 30–40 range but was not properly categorized. Additionally, six missing values were identified in `fhp_size_mm`, meaning that a few participants lack corresponding FHP measurements. 
+One `fhp_category` record (30.8) should fall in the 30–40 range but was uncategorized.
 
 # Visualization
 
@@ -234,7 +229,7 @@ combined_plot =
 combined_plot
 ```
 
-Across age groups, males exhibit both greater forward head protraction and a higher prevalence of enlarged EOP, suggesting a stronger morphological adaptation potentially linked to prolonged mechanical loading. The mid-age decline and later increase in both metrics may indicate age-related variation in postural stress or bone remodeling responses.
+Males show greater forward head protraction and higher enlarged EOP prevalence, consistent with the pattern described by the authors. both FHP and EOP measures show a mid-age decline followed by an increase in older groups.
 
 ```{r}
 exostosis_clean |>
@@ -256,21 +251,29 @@ exostosis_clean |>
   )
 ```
 
-This plot shows how FHP size relates to EOP size across age and sex groups.
-The relationship appears weak in both sexes, with scattered data and no clear trend within age categories. Males exhibit greater variability and generally larger EOP sizes, consistent with prior findings. Overall, EOP enlargement seems more influenced by sex than by FHP size.
+The plot shows a weak FHP–EOP relationship across age and sex. Data are scattered with no clear trend. Males show greater variability and larger EOP sizes, suggesting sex seems to have a stronger influence than FHP.
 
 # Reproducing reported results and discussion
-From the tables appear in first part, small discrepancies exist between the authors’ stated sample sizes and the available data. Overall, there are 21 more participants than reported, and differences appear across all age groups except 51–60.
+```{r}
+exostosis_clean |>
+  drop_na(age_group) |>
+  group_by(age_group) |>
+  summarise(participants = n()) |>
+  knitr::kable()
+```
+
+Small discrepancies exist between the authors’ stated and observed sample sizes, with 21 more participants overall and differences in all age groups except 51–60.
 
 ```{r}
 exostosis_clean |>
   group_by(sex) |>
   summarise(
-    mean_FHP = round(mean(fhp_size_mm, na.rm = TRUE), 2),
-    sd_FHP = round(sd(fhp_size_mm, na.rm = TRUE), 2),
-  ) 
+    mean_FHP = round(mean(fhp_size_mm), 2),
+    sd_FHP = round(sd(fhp_size_mm), 2),
+  ) |> 
+  knitr::kable()
 ```
-Author's state that mean FHP in the male cases was 28±15 mm, while that for the female cases was 24±11mm. Results based on sample shows that for male cases is $23.65 \pm 10.69$ and female cases is $28.32 \pm 14.80$ which basically the same as author's result.
+The authors reported mean FHP of $28 \pm 15$ mm in males and $24 \pm 11$ mm in females. Our sample shows $23.65 \pm 10.69$ mm for males and $28.32 \pm 14.80$ mm for females, largely consistent with the authors’ findings.
 
 ```{r}
 exostosis_clean |>
@@ -289,4 +292,6 @@ exostosis_clean |>
     FHP_over_40_percent = (sum(fhp_size_mm > 40) / n()) * 100
   )
 ```
-For participants over 60, $32.5\%$ (close to $34.5\%$) had FHP > 40 mm, the highest rate among all groups. Thus, both the overall trend and specific values are consistent with the authors’ report
+Among participants over 60, $32.5%$ (close to $34.5%$) had FHP > 40 mm — the highest rate across groups, consistent with both the trend and values reported by the authors.
+
+
